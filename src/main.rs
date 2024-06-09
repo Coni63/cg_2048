@@ -6,6 +6,7 @@ use agent::agent_trait::Agent;
 use agent::beam_search::BeamSearch;
 use board::Board;
 use evaluator::basic_evaluator::BasicEvaluator;
+use evaluator::priority_evaluator::PriorityEvaluator;
 
 #[allow(dead_code)]
 fn main() {
@@ -14,8 +15,8 @@ fn main() {
     println!("{:#}", game);
 
     let start = std::time::Instant::now();
-    let evaluator = BasicEvaluator {};
-    let beam_search: BeamSearch = BeamSearch::new(evaluator);
+    let evaluator = PriorityEvaluator {};
+    let beam_search: BeamSearch<PriorityEvaluator> = BeamSearch { evaluator };
     let ans = beam_search.search(&game);
     let elapsed = start.elapsed();
 

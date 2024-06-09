@@ -4,39 +4,13 @@ use std::hash::{Hash, Hasher};
 use crate::agent::agent_trait::Agent;
 use crate::agent::node::Node;
 use crate::board::Board;
-use crate::evaluator::basic_evaluator::BasicEvaluator;
 use crate::evaluator::evaluator_trait::Evaluator;
 
-pub struct BeamSearch {
-    evaluator: BasicEvaluator,
+pub struct BeamSearch<T: Evaluator> {
+    pub evaluator: T,
 }
 
-impl BeamSearch {
-    pub fn get_child(&self, node: &Node, action: u8) -> Option<Node> {
-        let mut new_board = node.board.clone();
-        match new_board.play(action) {
-            true => {
-                let mut new_node = Node::new(&new_board);
-                new_node.action = node.action.clone()
-                    + match action {
-                        1 => "U",
-                        2 => "L",
-                        3 => "D",
-                        4 => "R",
-                        _ => "",
-                    };
-                Some(new_node)
-            }
-            false => None,
-        }
-    }
-}
-
-impl Agent for BeamSearch {
-    fn new(evaluator: BasicEvaluator) -> Self {
-        BeamSearch { evaluator }
-    }
-
+impl<T: Evaluator> Agent for BeamSearch<T> {
     fn search(&self, board: &Board) -> Node {
         let mut queue_a: Vec<Node> = Vec::new();
         let mut queue_b: Vec<Node> = Vec::new();
@@ -95,5 +69,26 @@ impl Agent for BeamSearch {
         }
 
         best_node
+    }
+}
+
+impl<T: Evaluator> BeamSearch<T> {
+    pub fn get_child(&self, node: &Node, action: u8) -> Option<Node> {
+        let mut new_board = node.board.clone();
+        match new_board.play(action) {
+            true => {
+                let mut new_node = Node::new(&new_board);
+                new_node.action = node.action.clone()
+                    + match action {
+                        1 => "U",
+                        2 => "L",
+                        3 => "D",
+                        4 => "R",
+                        _ => "",
+                    };
+                Some(new_node)
+            }
+            false => None,
+        }
     }
 }
