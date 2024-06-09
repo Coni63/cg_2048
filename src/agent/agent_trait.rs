@@ -1,7 +1,8 @@
 use crate::agent::node::Node;
 use crate::board::Board;
+use crate::evaluator::basic_evaluator::BasicEvaluator;
 
 pub trait Agent {
-    fn get_fitness(grid: &[u8; 16]) -> u64;
-    fn search(board: &Board) -> Node;
+    fn new(evaluator: BasicEvaluator) -> Self;
+    fn search(&self, board: &Board) -> Node;
 }
