@@ -1,6 +1,8 @@
 mod agent;
 mod board;
 
+use agent::agent_trait::Agent;
+use agent::beam_search::BeamSearch;
 use board::Board;
 
 #[allow(dead_code)]
@@ -10,7 +12,7 @@ fn main() {
     println!("{:#}", game);
 
     let start = std::time::Instant::now();
-    let ans = agent::beam_search(&game);
+    let ans = BeamSearch::search(&game);
     let elapsed = start.elapsed();
 
     println!("Actions: {}", ans.action);
