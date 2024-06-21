@@ -8,7 +8,6 @@ use board::Board;
 use evaluator::basic_evaluator::BasicEvaluator;
 use evaluator::priority_evaluator::PriorityEvaluator;
 
-#[allow(dead_code)]
 fn main() {
     let game = Board::new(290797);
 
@@ -18,8 +17,10 @@ fn main() {
     let evaluator = PriorityEvaluator {};
     let beam_search: BeamSearch<PriorityEvaluator> = BeamSearch { evaluator };
     let ans = beam_search.search(&game);
+    // let ans = beam_search.search_with_depth(&game, 30000);
     let elapsed = start.elapsed();
 
+    println!("Actions: {}", ans.action.len());
     println!("Actions: {}", ans.action);
     println!("{:#?}", ans.board);
     println!("Time: {:?}", elapsed.as_millis());

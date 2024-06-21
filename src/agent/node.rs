@@ -41,3 +41,15 @@ impl PartialEq for Node {
 }
 
 impl Eq for Node {}
+
+impl Ord for Node {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        other.fitness.cmp(&self.fitness)
+    }
+}
+
+impl PartialOrd for Node {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}

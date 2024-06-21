@@ -12,6 +12,37 @@ pub struct BeamSearch<T: Evaluator> {
 
 impl<T: Evaluator> Agent for BeamSearch<T> {
     fn search(&self, board: &Board) -> Node {
+        self._search(board, 132000)
+    }
+
+    fn search_with_depth(&self, board: &Board, max_depth: i32) -> Node {
+        self._search(board, max_depth)
+    }
+}
+
+impl<T: Evaluator> BeamSearch<T> {
+    pub fn get_child(&self, node: &Node, action: u8) -> Option<Node> {
+        let mut new_board = node.board.clone();
+        match new_board.play(action) {
+            true => {
+                let mut new_node = Node::new(&new_board);
+                new_node.action = node.action.clone()
+                    + match action {
+                        1 => "U",
+                        2 => "L",
+                        3 => "D",
+                        4 => "R",
+                        _ => "",
+                    };
+                Some(new_node)
+            }
+            false => None,
+        }
+    }
+
+    fn _search(&self, board: &Board, max_depth: i32) -> Node {
+        // let mut queue_a: BinaryHeap<Node> = BinaryHeap::new();
+        // let mut queue_b: BinaryHeap<Node> = BinaryHeap::new();
         let mut queue_a: Vec<Node> = Vec::new();
         let mut queue_b: Vec<Node> = Vec::new();
         let mut hashset: FxHashSet<u64> = FxHashSet::default();
@@ -21,6 +52,8 @@ impl<T: Evaluator> Agent for BeamSearch<T> {
         queue_a.push(root.clone());
 
         let mut best_node = root.clone();
+
+        let mut move_count = 0;
 
         while !queue_a.is_empty() {
             for node in queue_a {
@@ -66,29 +99,14 @@ impl<T: Evaluator> Agent for BeamSearch<T> {
             queue_a = queue_b;
             queue_b = Vec::new();
             hashset.clear();
+
+            move_count += 1;
+            if move_count == max_depth {
+                best_node = queue_a.pop().unwrap().clone();
+                break;
+            }
         }
 
         best_node
-    }
-}
-
-impl<T: Evaluator> BeamSearch<T> {
-    pub fn get_child(&self, node: &Node, action: u8) -> Option<Node> {
-        let mut new_board = node.board.clone();
-        match new_board.play(action) {
-            true => {
-                let mut new_node = Node::new(&new_board);
-                new_node.action = node.action.clone()
-                    + match action {
-                        1 => "U",
-                        2 => "L",
-                        3 => "D",
-                        4 => "R",
-                        _ => "",
-                    };
-                Some(new_node)
-            }
-            false => None,
-        }
     }
 }
