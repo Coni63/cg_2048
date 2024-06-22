@@ -15,7 +15,9 @@ impl Database {
                 id INTEGER PRIMARY KEY,
                 board TEXT NOT NULL,
                 action TEXT NOT NULL,
+                count_action INTEGER NOT NULL DEFAULT 0,
                 score INTEGER NOT NULL,
+                initial_seed INTEGER NOT NULL,
                 seed INTEGER NOT NULL,
                 finished INTEGER NOT NULL DEFAULT 0,
                 solver TEXT NOT NULL,
@@ -27,17 +29,18 @@ impl Database {
         Database { conn }
     }
 
-    pub fn insert(&self, node: &Node, solver: &str, evaluator: &str) {
+    pub fn insert(&self, node: &Node, solver: &str, evaluator: &str, initial_seed: u64) {
         let board = node.board.export();
         println!("{}", board);
         let action = node.action.to_string();
+        let count_action = node.action.len();
         let score = node.board.score;
         let seed = node.board.seed;
         let finished = node.board.is_game_over();
         self.conn
             .execute(
-                "INSERT INTO data (board, action, score, seed, finished, solver, evaluator) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-                params![board, action, score, seed, finished, solver, evaluator],
+                "INSERT INTO data (board, action, count_action, score, initial_seed, seed, finished, solver, evaluator) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+                params![board, action, count_action, score, initial_seed, seed, finished, solver, evaluator],
             )
             .unwrap();
     }
