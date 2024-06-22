@@ -30,7 +30,6 @@ impl Board {
         moved
     }
 
-    #[allow(dead_code)]
     pub fn is_game_over(&self) -> bool {
         let mut moved: bool;
         let mut copy: Board;
@@ -228,6 +227,29 @@ impl Board {
             }
         }
         moved
+    }
+
+    pub fn export(&self) -> String {
+        self.board
+            .iter()
+            .map(|x| x.to_string())
+            .collect::<Vec<String>>()
+            .join(" ")
+    }
+
+    pub fn from_string(s: String) -> Board {
+        let board = s
+            .split_whitespace()
+            .map(|x| x.parse::<u8>().unwrap())
+            .collect::<Vec<u8>>()
+            .try_into()
+            .unwrap();
+
+        Board {
+            board,
+            score: 0,
+            seed: 0,
+        }
     }
 }
 

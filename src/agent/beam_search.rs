@@ -11,12 +11,12 @@ pub struct BeamSearch<T: Evaluator> {
 }
 
 impl<T: Evaluator> Agent for BeamSearch<T> {
-    fn search(&self, board: &Board) -> Node {
-        self._search(board, 132000)
+    fn search(&self, node: &mut Node) -> Node {
+        self._search(node, 132000)
     }
 
-    fn search_with_depth(&self, board: &Board, max_depth: i32) -> Node {
-        self._search(board, max_depth)
+    fn search_with_depth(&self, node: &mut Node, max_depth: i32) -> Node {
+        self._search(node, max_depth)
     }
 }
 
@@ -40,14 +40,13 @@ impl<T: Evaluator> BeamSearch<T> {
         }
     }
 
-    fn _search(&self, board: &Board, max_depth: i32) -> Node {
+    fn _search(&self, root: &mut Node, max_depth: i32) -> Node {
         // let mut queue_a: BinaryHeap<Node> = BinaryHeap::new();
         // let mut queue_b: BinaryHeap<Node> = BinaryHeap::new();
         let mut queue_a: Vec<Node> = Vec::new();
         let mut queue_b: Vec<Node> = Vec::new();
         let mut hashset: FxHashSet<u64> = FxHashSet::default();
 
-        let mut root = Node::new(board);
         root.fitness = self.evaluator.get_fitness(&root.board);
         queue_a.push(root.clone());
 
