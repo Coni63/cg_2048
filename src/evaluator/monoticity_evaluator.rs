@@ -12,12 +12,14 @@ impl Evaluator for MonoticityEvaluator {
 
         let mut longest_seq: u64 = 0;
         let mut curr_seq: u64 = 0;
+        let mut count_val: u64 = 0;
         let mut prev_val = board.board[order[0]];
         for idx in order.iter() {
             let v = board.board[*idx];
             if v == 0 {
                 continue;
             }
+            count_val += 1;
             if v <= prev_val {
                 curr_seq += 1;
                 longest_seq = max(longest_seq, curr_seq);
@@ -27,7 +29,7 @@ impl Evaluator for MonoticityEvaluator {
             prev_val = v;
         }
 
-        longest_seq
+        longest_seq * 100 / count_val
     }
 }
 
@@ -45,7 +47,7 @@ mod tests {
         let evaluator = MonoticityEvaluator {};
 
         let fitness = evaluator.get_fitness(&board);
-        assert_eq!(fitness, 7);
+        assert_eq!(fitness, 53);
     }
 
     #[test]
@@ -58,7 +60,7 @@ mod tests {
         let evaluator = MonoticityEvaluator {};
 
         let fitness = evaluator.get_fitness(&board);
-        assert_eq!(fitness, 16);
+        assert_eq!(fitness, 100);
     }
 
     #[test]
@@ -71,6 +73,6 @@ mod tests {
         let evaluator = MonoticityEvaluator {};
 
         let fitness = evaluator.get_fitness(&board);
-        assert_eq!(fitness, 2);
+        assert_eq!(fitness, 28);
     }
 }
