@@ -4,10 +4,10 @@ mod database;
 mod evaluator;
 
 use agent::agent_trait::Agent;
-use agent::beam_search::BeamSearch;
 use agent::node::Node;
+use agent::{BeamSearch, BeamSearchV2};
 use board::Board;
-use evaluator::MetaEvaluator;
+use evaluator::{MetaEvaluator, PriorityEvaluator};
 
 // fn run_seed(seed: u64, db: &mut database::Database) {
 //     let game = Board::new(seed);
@@ -41,17 +41,18 @@ fn eval_seed(seed: u64) -> u32 {
     let mut ans = Node::new(&game);
 
     let evaluator = MetaEvaluator {};
-    let beam_search: BeamSearch<MetaEvaluator> = BeamSearch { evaluator };
+    let beam_search: BeamSearchV2<MetaEvaluator> = BeamSearchV2 { evaluator };
 
     for _ in 0..600 {
         ans = beam_search.search_with_depth(&mut ans, 250);
         if ans.board.is_game_over() {
+            println!("{:#?}", ans.board);
             break;
         }
     }
 
     // ans = beam_search.search(&mut ans);
-
+    println!("{:#?}", ans.board);
     println!("Seed: {} - Score {}", seed, ans.board.score);
 
     ans.board.score
@@ -72,8 +73,8 @@ fn compute_full_score() {
 }
 
 fn main() {
-    // eval_seed(290797);
-    compute_full_score();
+    eval_seed(290797);
+    // compute_full_score();
 }
 
 // 17.3M -- step 250 -- 224.74596 s
