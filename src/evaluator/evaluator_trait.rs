@@ -1,5 +1,5 @@
 use crate::board::Board;
 
 pub trait Evaluator {
-    fn get_fitness(&self, board: &Board) -> u64;
+    fn get_fitness(&self, board: &Board) -> i64;
 }

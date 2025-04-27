@@ -7,7 +7,7 @@ impl Evaluator for MonotonicityEvaluator {
     // this score is between 0 and 24
     // 0 - no monotonicity
     // 24 - perfect monotonicity
-    fn get_fitness(&self, board: &Board) -> u64 {
+    fn get_fitness(&self, board: &Board) -> i64 {
         let mut total_monotonicity = 0;
 
         // Check horizontal monotonicity
@@ -116,7 +116,7 @@ impl Evaluator for MonotonicityEvaluator {
             total_monotonicity += top_to_bottom.max(bottom_to_top).max(0);
         }
 
-        total_monotonicity as u64
+        total_monotonicity as i64
     }
 }
 

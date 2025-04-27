@@ -4,7 +4,7 @@ use crate::board::Board;
 
 pub struct Node {
     pub board: Board,
-    pub fitness: u64,
+    pub fitness: i64,
     pub action: String,
 }
 
@@ -12,7 +12,7 @@ impl Node {
     pub fn new(board: &Board) -> Self {
         Node {
             board: board.clone(),
-            fitness: 0u64,
+            fitness: 0i64,
             action: String::new(),
         }
     }

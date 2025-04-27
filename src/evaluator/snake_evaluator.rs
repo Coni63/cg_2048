@@ -7,12 +7,12 @@ use super::evaluator_trait::Evaluator;
 pub struct SnakeEvaluator {}
 
 impl Evaluator for SnakeEvaluator {
-    fn get_fitness(&self, board: &Board) -> u64 {
+    fn get_fitness(&self, board: &Board) -> i64 {
         let order = [12, 13, 14, 15, 11, 10, 9, 8, 4, 5]; //, 6, 7, 3, 2, 1, 0];
 
-        let mut longest_seq: u64 = 0;
-        let mut curr_seq: u64 = 0;
-        let mut count_val: u64 = 0;
+        let mut longest_seq: i64 = 0;
+        let mut curr_seq: i64 = 0;
+        let mut count_val: i64 = 0;
         let mut prev_val = board.board[order[0]];
         for idx in order.iter() {
             let v = board.board[*idx];

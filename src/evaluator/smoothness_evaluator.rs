@@ -8,7 +8,7 @@ impl Evaluator for SmoothnessEvaluator {
     // 0 - no smoothness
     // 72 - perfect smoothness
 
-    fn get_fitness(&self, board: &Board) -> u64 {
+    fn get_fitness(&self, board: &Board) -> i64 {
         let mut smoothness = 0;
 
         // Check horizontal smoothness
@@ -66,7 +66,7 @@ impl Evaluator for SmoothnessEvaluator {
             }
         }
 
-        smoothness as u64
+        smoothness as i64
     }
 }
 

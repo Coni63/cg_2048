@@ -41,7 +41,7 @@ fn eval_seed(seed: u64) -> u32 {
     let mut ans = Node::new(&game);
 
     let evaluator = MetaEvaluator {};
-    let beam_search: BeamSearchV2<MetaEvaluator> = BeamSearchV2 { evaluator };
+    let beam_search: BeamSearch<MetaEvaluator> = BeamSearch { evaluator };
 
     for _ in 0..600 {
         ans = beam_search.search_with_depth(&mut ans, 250);

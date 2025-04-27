@@ -5,7 +5,7 @@ use super::evaluator_trait::Evaluator;
 pub struct PriorityEvaluator {}
 
 impl Evaluator for PriorityEvaluator {
-    fn get_fitness(&self, board: &Board) -> u64 {
+    fn get_fitness(&self, board: &Board) -> i64 {
         // let powers: [u8; 16] = [1, 2, 4, 6, 14, 12, 10, 8, 16, 18, 20, 22, 30, 28, 26, 24];
         let powers: [u8; 16] = [2, 1, 0, 0, 4, 2, 1, 0, 6, 8, 10, 12, 20, 18, 16, 14];
 
