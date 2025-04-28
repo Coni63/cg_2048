@@ -4,7 +4,7 @@ use crate::board::Board;
 
 pub struct Node {
     pub board: Board,
-    pub fitness: i64,
+    pub fitness: f64,
     pub action: String,
 }
 
@@ -12,7 +12,7 @@ impl Node {
     pub fn new(board: &Board) -> Self {
         Node {
             board: board.clone(),
-            fitness: 0i64,
+            fitness: 0f64,
             action: String::new(),
         }
     }
@@ -44,7 +44,9 @@ impl Eq for Node {}
 
 impl Ord for Node {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        other.fitness.cmp(&self.fitness)
+        self.fitness
+            .partial_cmp(&other.fitness)
+            .unwrap_or(std::cmp::Ordering::Equal)
     }
 }
 

@@ -28,6 +28,10 @@ impl Evaluator for MetaEvaluator {
 
         monotonicity_fitness * 5 + smoothness_fitness * 3 + empty_cell_fitness * 2
     }
+
+    fn get_highest_possible_fitness(&self, board: &Board) -> i64 {
+        0
+    }
 }
 
 // Seed: 290797 - Score 799832

@@ -43,10 +43,11 @@ impl<T: Evaluator> BeamSearchV2<T> {
         Some(Node {
             board: new_board,
             action: action_str,
-            fitness: 0,
+            fitness: 0f64,
         })
     }
 
+    #[allow(clippy::never_loop)]
     fn _search(&self, root: &mut Node, max_depth: i32) -> Node {
         // let mut queue_a: BinaryHeap<Node> = BinaryHeap::new();
         // let mut queue_b: BinaryHeap<Node> = BinaryHeap::new();
@@ -68,7 +69,10 @@ impl<T: Evaluator> BeamSearchV2<T> {
         ];
         // 1234 ULDR
 
-        root.fitness = self.evaluator.get_fitness(&root.board);
+        let fitness = self.evaluator.get_fitness(&root.board);
+        let max_fitness = self.evaluator.get_highest_possible_fitness(&root.board);
+        root.fitness = fitness as f64 / max_fitness as f64;
+
         queue_a.push(root.clone());
 
         let mut best_node = root.clone();
@@ -83,7 +87,11 @@ impl<T: Evaluator> BeamSearchV2<T> {
                         new_node.hash(&mut hasher);
                         let h1 = hasher.finish();
                         if !hashset.contains(&h1) {
-                            new_node.fitness = self.evaluator.get_fitness(&new_node.board);
+                            let fitness = self.evaluator.get_fitness(&new_node.board);
+                            let max_fitness =
+                                self.evaluator.get_highest_possible_fitness(&new_node.board);
+
+                            new_node.fitness = fitness as f64 / max_fitness as f64;
                             hashset.insert(h1);
                             queue_b.push(new_node);
                         }
@@ -91,15 +99,34 @@ impl<T: Evaluator> BeamSearchV2<T> {
                 }
             }
 
-            queue_b.sort_by(|a, b| b.fitness.cmp(&a.fitness));
+            queue_b.sort_by(|a, b| {
+                b.fitness
+                    .partial_cmp(&a.fitness)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
+
+            if queue_b.is_empty() {
+                break;
+            }
+
+            best_node = queue_b.first().unwrap().clone();
+
             queue_b.truncate(200);
+
+            // queue_b.iter().for_each(|node| {
+            //     println!(
+            //         "Node: {} - Fitness: {} - Score: {}",
+            //         node.action, node.fitness, node.board.score
+            //     );
+            // });
+            // return queue_b.first().unwrap().clone();
+
             queue_a = queue_b;
             queue_b = Vec::new();
             hashset.clear();
 
             move_count += 2;
             if move_count == max_depth {
-                best_node = queue_a.pop().unwrap().clone();
                 break;
             }
         }

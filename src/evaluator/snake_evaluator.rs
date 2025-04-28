@@ -31,6 +31,10 @@ impl Evaluator for SnakeEvaluator {
 
         longest_seq * 100 / count_val
     }
+
+    fn get_highest_possible_fitness(&self, _board: &Board) -> i64 {
+        10 // len of 'order'
+    }
 }
 
 #[cfg(test)]

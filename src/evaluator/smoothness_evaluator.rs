@@ -68,6 +68,10 @@ impl Evaluator for SmoothnessEvaluator {
 
         smoothness as i64
     }
+
+    fn get_highest_possible_fitness(&self, _board: &Board) -> i64 {
+        72 // TODO: Find a better way to calculate this
+    }
 }
 
 #[cfg(test)]

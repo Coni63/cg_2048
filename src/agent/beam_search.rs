@@ -5,6 +5,7 @@ use crate::agent::agent_trait::Agent;
 use crate::agent::node::Node;
 use crate::board::Board;
 use crate::evaluator::evaluator_trait::Evaluator;
+use crate::evaluator::PriorityEvaluator;
 
 pub struct BeamSearch<T: Evaluator> {
     pub evaluator: T,
@@ -46,7 +47,10 @@ impl<T: Evaluator> BeamSearch<T> {
         let mut queue_b: Vec<Node> = Vec::new();
         let mut hashset: FxHashSet<u64> = FxHashSet::default();
 
-        root.fitness = self.evaluator.get_fitness(&root.board);
+        let fitness = self.evaluator.get_fitness(&root.board);
+        let max_fitness = self.evaluator.get_highest_possible_fitness(&root.board);
+        root.fitness = fitness as f64 / max_fitness as f64;
+
         queue_a.push(root.clone());
 
         let mut best_node = root.clone();
@@ -63,7 +67,11 @@ impl<T: Evaluator> BeamSearch<T> {
                         new_node.hash(&mut hasher);
                         let h1 = hasher.finish();
                         if !hashset.contains(&h1) {
-                            new_node.fitness = self.evaluator.get_fitness(&new_node.board);
+                            let fitness = self.evaluator.get_fitness(&new_node.board);
+                            let max_fitness =
+                                self.evaluator.get_highest_possible_fitness(&new_node.board);
+
+                            new_node.fitness = fitness as f64 / max_fitness as f64;
                             hashset.insert(h1);
                             queue_b.push(new_node);
                             has_moved = true;
@@ -78,7 +86,11 @@ impl<T: Evaluator> BeamSearch<T> {
                             new_node.hash(&mut hasher);
                             let h1 = hasher.finish();
                             if !hashset.contains(&h1) {
-                                new_node.fitness = self.evaluator.get_fitness(&new_node.board);
+                                let fitness = self.evaluator.get_fitness(&new_node.board);
+                                let max_fitness =
+                                    self.evaluator.get_highest_possible_fitness(&new_node.board);
+
+                                new_node.fitness = fitness as f64 / max_fitness as f64;
                                 hashset.insert(h1);
                                 queue_b.push(new_node);
                             }
@@ -92,7 +104,11 @@ impl<T: Evaluator> BeamSearch<T> {
                 }
             }
 
-            queue_b.sort_by(|a, b| b.fitness.cmp(&a.fitness));
+            queue_b.sort_by(|a, b| {
+                b.fitness
+                    .partial_cmp(&a.fitness)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
             queue_b.truncate(200);
             queue_a = queue_b;
             queue_b = Vec::new();

@@ -118,6 +118,10 @@ impl Evaluator for MonotonicityEvaluator {
 
         total_monotonicity as i64
     }
+
+    fn get_highest_possible_fitness(&self, _board: &Board) -> i64 {
+        24 // TODO: Find a better way to calculate this
+    }
 }
 
 #[cfg(test)]
