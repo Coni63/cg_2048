@@ -58,11 +58,12 @@ impl Default for BeamParams {
             width: 1000,
             horizon: 200,
             layers_per_turn: 0,
-            time_ms: 30.0,
+            time_ms: 25.0,
             first_time_ms: 900.0,
             always_up: true,
             min_width: 20,
-            max_width: 200_000,
+            // a wider beam does not improve the score, it only makes turns less predictable
+            max_width: 6000,
         }
     }
 }
@@ -144,8 +145,10 @@ pub struct Agent<'a> {
     width: usize,
     /// index of the current state in layer 0
     root: usize,
-    /// time reserved for the end of turn (choice of the path + rebase), decaying max
-    commit_ms: f64,
+    /// end of turn cost (choice of the path + rebase) per node of the window, decaying max
+    commit_ms_per_node: f64,
+    /// number of nodes in all the layers
+    window: usize,
     /// moves left before the forced game over
     moves_left: u64,
     turn: usize,
@@ -164,7 +167,8 @@ impl<'a> Agent<'a> {
             dedup: DedupSet::new(),
             width,
             root: 0,
-            commit_ms: 1.0,
+            commit_ms_per_node: 1e-5,
+            window: 1,
             moves_left: 0,
             turn: 0,
             stats: TurnStats::default(),
@@ -185,6 +189,7 @@ impl<'a> Agent<'a> {
             n4: 0,
         });
         self.root = 0;
+        self.window = 1;
         self.moves_left = moves_until_forced_death(mass(b), seed);
     }
 
@@ -297,6 +302,7 @@ impl<'a> Agent<'a> {
             cand.truncate(w);
         }
         let n4 = last.n4 + (value == 2) as u64;
+        self.window += cand.len();
         layers.push_back(Layer {
             nodes: cand.clone(),
             seed: next_seed(seed),
@@ -320,11 +326,12 @@ impl<'a> Agent<'a> {
     /// alive[i] for the nodes of layer `to`, given the alive mask of layer `from`
     fn propagate(&self, from: usize, mut alive: Vec<bool>, to: usize) -> Vec<bool> {
         for j in from + 1..=to {
-            alive = self.layers[j]
-                .nodes
-                .iter()
-                .map(|n| alive[n.parent as usize])
-                .collect();
+            let nodes = &self.layers[j].nodes;
+            let mut next = vec![false; nodes.len()];
+            for (i, n) in nodes.iter().enumerate() {
+                next[i] = alive[n.parent as usize];
+            }
+            alive = next;
         }
         alive
     }
@@ -401,7 +408,8 @@ impl<'a> Agent<'a> {
             if !fixed {
                 let elapsed = start.elapsed().as_secs_f64() * 1000.0;
                 // always keep at least one move to play
-                if elapsed + 2.0 * last_layer_ms + self.commit_ms > budget && self.layers.len() > 1 {
+                let commit_ms = 0.5 + self.commit_ms_per_node * self.window as f64;
+                if elapsed + 2.0 * last_layer_ms + commit_ms > budget && self.layers.len() > 1 {
                     break;
                 }
             }
@@ -450,7 +458,9 @@ impl<'a> Agent<'a> {
         }
 
         let commit_ms = commit_start.elapsed().as_secs_f64() * 1000.0;
-        self.commit_ms = commit_ms.max(self.commit_ms * 0.9);
+        let per_node = commit_ms / self.window as f64;
+        self.commit_ms_per_node = per_node.max(self.commit_ms_per_node * 0.95);
+        self.window = self.layers.iter().map(|l| l.nodes.len()).sum();
 
         self.stats = TurnStats {
             layers: expanded,
