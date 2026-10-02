@@ -58,7 +58,7 @@ impl Default for BeamParams {
             width: 1000,
             horizon: 200,
             layers_per_turn: 0,
-            time_ms: 40.0,
+            time_ms: 30.0,
             first_time_ms: 900.0,
             always_up: true,
             min_width: 20,
@@ -70,7 +70,7 @@ impl Default for BeamParams {
 struct DedupSet {
     keys: Vec<B>,
     stamps: Vec<u32>,
-    gen: u32,
+    generation: u32,
     shift: u32,
 }
 
@@ -79,7 +79,7 @@ impl DedupSet {
         DedupSet {
             keys: Vec::new(),
             stamps: Vec::new(),
-            gen: 0,
+            generation: 0,
             shift: 64,
         }
     }
@@ -92,13 +92,13 @@ impl DedupSet {
         if self.keys.len() < (1 << bits) {
             self.keys = vec![0; 1 << bits];
             self.stamps = vec![0; 1 << bits];
-            self.gen = 0;
+            self.generation = 0;
         }
         self.shift = 64 - self.keys.len().trailing_zeros();
-        self.gen = self.gen.wrapping_add(1);
-        if self.gen == 0 {
+        self.generation = self.generation.wrapping_add(1);
+        if self.generation == 0 {
             self.stamps.iter_mut().for_each(|s| *s = 0);
-            self.gen = 1;
+            self.generation = 1;
         }
     }
 
@@ -109,8 +109,8 @@ impl DedupSet {
         let mask = self.keys.len() - 1;
         let mut h = (x.wrapping_mul(0xBF58_476D_1CE4_E5B9) >> self.shift) as usize;
         loop {
-            if self.stamps[h] != self.gen {
-                self.stamps[h] = self.gen;
+            if self.stamps[h] != self.generation {
+                self.stamps[h] = self.generation;
                 self.keys[h] = k;
                 return true;
             }
@@ -130,6 +130,8 @@ pub struct TurnStats {
     pub ahead: usize,
     pub frontier: usize,
     pub resync: bool,
+    pub commit_ms: f64,
+    pub window: usize,
 }
 
 pub struct Agent<'a> {
@@ -346,27 +348,21 @@ impl<'a> Agent<'a> {
         self.layers.drain(..k);
     }
 
-    /// Best game-over node of the tree (used when the whole beam is dead).
+    /// Best game-over node when the whole beam is dead: every frontier node is then a
+    /// game over, and the frontier only holds descendants of the root.
     fn best_terminal(&self) -> (usize, usize) {
-        let mut best = (0, self.root);
-        let mut best_score = i64::MIN;
-        let mut alive = vec![false; self.layers[0].nodes.len()];
-        alive[self.root] = true;
-        for (d, layer) in self.layers.iter().enumerate() {
-            if d > 0 {
-                alive = self.propagate(d - 1, alive, d);
-            }
-            for (i, n) in layer.nodes.iter().enumerate() {
-                if n.dead && alive[i] {
-                    let s = tile_score(n.b) as i64 - 4 * layer.n4 as i64;
-                    if s > best_score {
-                        best_score = s;
-                        best = (d, i);
-                    }
-                }
+        let d = self.layers.len() - 1;
+        let layer = &self.layers[d];
+        let mut best = 0;
+        let mut best_score = 0;
+        for (i, n) in layer.nodes.iter().enumerate() {
+            let s = tile_score(n.b);
+            if s > best_score {
+                best_score = s;
+                best = i;
             }
         }
-        best
+        (d, best)
     }
 
     /// Play one turn: `seed` and `cells` (exponents) are the referee input, `start` the
@@ -405,7 +401,7 @@ impl<'a> Agent<'a> {
             if !fixed {
                 let elapsed = start.elapsed().as_secs_f64() * 1000.0;
                 // always keep at least one move to play
-                if elapsed + 1.5 * last_layer_ms + self.commit_ms > budget && self.layers.len() > 1 {
+                if elapsed + 2.0 * last_layer_ms + self.commit_ms > budget && self.layers.len() > 1 {
                     break;
                 }
             }
@@ -444,8 +440,10 @@ impl<'a> Agent<'a> {
             for &(mv, _) in &path[..play] {
                 out.push(MOVE_CHARS[mv as usize] as char);
             }
-            let new_root = path[play - 1].1;
-            self.rebase(play, new_root);
+            if !dead {
+                // after a dead turn the game is over, no need to keep the tree consistent
+                self.rebase(play, path[play - 1].1);
+            }
         } else {
             // root without legal move: the game is already over
             out.push('U');
@@ -461,6 +459,8 @@ impl<'a> Agent<'a> {
             ahead,
             frontier: self.layers.back().map_or(0, |l| l.nodes.len()),
             resync,
+            commit_ms,
+            window: self.layers.iter().map(|l| l.nodes.len()).sum(),
         };
 
         if !fixed && first && expanded > 0 {

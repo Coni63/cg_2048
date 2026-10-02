@@ -49,6 +49,9 @@ fn codingame() {
             }
         }
         let out = agent.turn(seed, cells, start);
+        // answer first: the referee clock runs until it reads this line
+        println!("{}", out);
+        io::stdout().flush().unwrap();
         let s = &agent.stats;
         eprintln!(
             "{:.1} ms | layers {} width {} played {} frontier {}{}",
@@ -59,8 +62,6 @@ fn codingame() {
             s.frontier,
             if s.resync { " RESYNC" } else { "" }
         );
-        println!("{}", out);
-        io::stdout().flush().unwrap();
     }
 }
 
