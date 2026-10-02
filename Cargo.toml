@@ -3,8 +3,14 @@ name = "cg_2048"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-rusqlite = { version = "0.31.0", features = ["bundled"] }
-fxhash = "0.2.1"
+
+[profile.release]
+opt-level = 3
+codegen-units = 1
+panic = "abort"
+
+# close to what an online judge does: optimized, no LTO tricks
+[profile.cg]
+inherits = "release"
+codegen-units = 16

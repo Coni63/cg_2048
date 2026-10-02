@@ -2,6 +2,9 @@ use std::cmp::{Eq, PartialEq};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
+// Reference simulator: slow but straightforward, validated against the real game.
+// Used by the local bench to replay the agent outputs like the CG referee does.
+
 pub struct Board {
     pub board: [u8; 16],
     pub score: u32,
@@ -23,10 +26,11 @@ impl Board {
     }
 
     pub fn play(&mut self, action: u8) -> bool {
+        // like the CG referee: an invalid move spawns nothing
         let moved = self.apply_action(action);
-
-        self.add_random_tile();
-
+        if moved {
+            self.add_random_tile();
+        }
         moved
     }
 
