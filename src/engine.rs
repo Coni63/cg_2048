@@ -152,6 +152,24 @@ pub fn tile_score(b: B) -> u64 {
     s
 }
 
+/// Sum of the tiles.
+pub fn mass(b: B) -> u64 {
+    (0..16).map(|i| get(b, i)).filter(|&v| v > 0).map(|v| 1u64 << v).sum()
+}
+
+/// Number of moves before the game is necessarily over: the mass only depends on the
+/// spawned values (so on the seed), and a mass with 16 bits set needs 16 distinct tiles,
+/// i.e. a full board without any merge.
+pub fn moves_until_forced_death(mut mass: u64, mut seed: u64) -> u64 {
+    let mut moves = 0;
+    while mass.count_ones() < 16 && moves < 1_000_000 {
+        mass += 1 << spawn_value(seed);
+        seed = next_seed(seed);
+        moves += 1;
+    }
+    moves
+}
+
 pub fn max_tile(b: B) -> u8 {
     (0..16).map(|i| get(b, i)).max().unwrap()
 }

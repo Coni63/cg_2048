@@ -24,6 +24,11 @@ pub struct EvalParams {
     pub mono_pow: f64,
     pub sum: f64,
     pub sum_pow: f64,
+    /// 0: C# weights, otherwise weight = step * (position along the snake from the tail)
+    pub snake_step: f64,
+    /// deterministic per-board noise added to the eval (diversity), 0 = off
+    pub noise: f64,
+    pub noise_seed: f64,
 }
 
 impl Default for EvalParams {
@@ -36,6 +41,9 @@ impl Default for EvalParams {
             mono_pow: 4.0,
             sum: 0.0,
             sum_pow: 3.5,
+            snake_step: 0.0,
+            noise: 0.0,
+            noise_seed: 1.0,
         }
     }
 }
@@ -50,6 +58,9 @@ impl EvalParams {
             "mono_pow" => self.mono_pow = value,
             "sum" => self.sum = value,
             "sum_pow" => self.sum_pow = value,
+            "snake_step" => self.snake_step = value,
+            "noise" => self.noise = value,
+            "noise_seed" => self.noise_seed = value,
             _ => return false,
         }
         true
@@ -66,6 +77,7 @@ pub struct Evaluator {
     lines: Vec<f32>,
     // [row][half][10-bit key]
     snake: Vec<[[f64; 1024]; 2]>,
+    noise_key: u64,
 }
 
 fn line_heuristic(p: &EvalParams, line: [u32; 4]) -> f64 {
@@ -115,6 +127,15 @@ impl Evaluator {
         } else {
             Vec::new()
         };
+        let mut weights = SNAKE_WEIGHTS;
+        if params.snake_step > 0.0 {
+            // position along the snake from the tail: C# weights are already sorted that way
+            let mut order: Vec<(u32, usize)> = (0..16).map(|i| (SNAKE_WEIGHTS[i / 4][i % 4], i)).collect();
+            order.sort();
+            for (pos, &(_, i)) in order.iter().enumerate() {
+                weights[i / 4][i % 4] = (params.snake_step * pos as f64).round() as u32;
+            }
+        }
         let mut snake = vec![[[0f64; 1024]; 2]; 4];
         for (r, halves) in snake.iter_mut().enumerate() {
             for (h, table) in halves.iter_mut().enumerate() {
@@ -122,17 +143,19 @@ impl Evaluator {
                     for k in 0..2 {
                         let v = ((key >> (5 * k)) & 0x1f) as u32;
                         if v > 0 {
-                            *value += (1u64 << (SNAKE_WEIGHTS[r][2 * h + k] + v)) as f64;
+                            *value += (weights[r][2 * h + k] as f64 + v as f64).exp2();
                         }
                     }
                 }
             }
         }
+        let noise_key = (params.noise_seed as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15) | 1;
         Evaluator {
             params,
             use_lines,
             lines,
             snake,
+            noise_key,
         }
     }
 
@@ -157,6 +180,10 @@ impl Evaluator {
             let l = &self.lines;
             e += (l[row(b, 0)] + l[row(b, 1)] + l[row(b, 2)] + l[row(b, 3)]) as f64;
             e += (l[row(t, 0)] + l[row(t, 1)] + l[row(t, 2)] + l[row(t, 3)]) as f64;
+        }
+        if self.params.noise != 0.0 {
+            let h = ((b as u64) ^ ((b >> 64) as u64).rotate_left(29)).wrapping_mul(self.noise_key);
+            e += self.params.noise * ((h >> 11) as f64 / (1u64 << 53) as f64);
         }
         e
     }

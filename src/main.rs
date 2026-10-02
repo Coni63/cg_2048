@@ -8,11 +8,10 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
 use std::time::Instant;
 
-use beam::{Agent, BeamParams};
+use beam::{Agent, BeamParams, MAX_TURNS};
 use engine::Tables;
 use eval::{EvalParams, Evaluator};
 
-const MAX_TURNS: usize = 600;
 
 const TEST_SEEDS: [u64; 30] = [
     42, 290797, 10682358, 38333962, 47049887, 11205586, 15242016, 32019767, 46946765, 4424780,
@@ -77,6 +76,7 @@ struct GameResult {
     late_turns: usize,
     total_ms: f64,
     resyncs: usize,
+    width_sum: usize,
 }
 
 fn sim_action(c: char) -> u8 {
@@ -103,6 +103,7 @@ fn run_game(seed: u64, tables: &Tables, evaluator: &Evaluator, params: &BeamPara
         late_turns: 0,
         total_ms: 0.0,
         resyncs: 0,
+        width_sum: 0,
     };
     while res.turns < MAX_TURNS {
         if game.is_game_over() {
@@ -124,6 +125,7 @@ fn run_game(seed: u64, tables: &Tables, evaluator: &Evaluator, params: &BeamPara
         }
         res.total_ms += ms;
         res.resyncs += agent.stats.resync as usize;
+        res.width_sum += agent.stats.width;
         res.turns += 1;
         for c in out.chars() {
             if !game.play(sim_action(c)) {
@@ -135,6 +137,10 @@ fn run_game(seed: u64, tables: &Tables, evaluator: &Evaluator, params: &BeamPara
     }
     if game.is_game_over() {
         res.finished = true;
+    }
+    if std::env::var("FINAL").is_ok() {
+        eprintln!("final board seed {}:
+{}", seed, game);
     }
     res.score = game.score;
     res.max_tile = *game.board.iter().max().unwrap();
@@ -203,7 +209,7 @@ fn bench(args: &[String]) {
                 }
                 let r = run_game(seeds[k], &tables, &evaluator, &beam_params);
                 println!(
-                    "seed {:>9} score {:>8} tile {:>6} moves {:>6} turns {:>3}{}{} | max {:.1} ms late {} total {:.1} s{}",
+                    "seed {:>9} score {:>8} tile {:>6} moves {:>6} turns {:>3}{}{} | width {:>5} max {:.1} ms late {} total {:.1} s{}",
                     r.seed,
                     r.score,
                     1u32 << r.max_tile,
@@ -211,6 +217,7 @@ fn bench(args: &[String]) {
                     r.turns,
                     if r.finished { "" } else { " CAPPED" },
                     if r.invalid > 0 { " INVALID" } else { "" },
+                    r.width_sum / r.turns.max(1),
                     r.max_turn_ms,
                     r.late_turns,
                     r.total_ms / 1000.0,

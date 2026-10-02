@@ -4,6 +4,8 @@ use std::time::Instant;
 use crate::engine::*;
 use crate::eval::Evaluator;
 
+pub const MAX_TURNS: usize = 600;
+
 // Persistent beam search.
 //
 // The beam is never restarted: layer 0 is the real current state, the last layer is the
@@ -38,12 +40,13 @@ pub struct BeamParams {
     pub width: usize,
     /// number of layers kept unplayed in front of the played moves
     pub horizon: usize,
-    /// fixed mode: layers expanded per turn; time mode: target used to adapt the width
+    /// fixed mode: layers expanded per turn; time mode: target used to adapt the width.
+    /// 0 = auto: the moves left before the forced game over spread over the turns left
     pub layers_per_turn: usize,
     /// time budget per turn in ms, 0 = fixed mode
     pub time_ms: f64,
     pub first_time_ms: f64,
-    /// false: UP is only tried when no other move is legal
+    /// false: UP is only tried when no other move is legal (smaller tree, but loses games)
     pub always_up: bool,
     pub min_width: usize,
     pub max_width: usize,
@@ -54,10 +57,10 @@ impl Default for BeamParams {
         BeamParams {
             width: 1000,
             horizon: 200,
-            layers_per_turn: 130,
+            layers_per_turn: 0,
             time_ms: 40.0,
             first_time_ms: 900.0,
-            always_up: false,
+            always_up: true,
             min_width: 20,
             max_width: 200_000,
         }
@@ -141,6 +144,8 @@ pub struct Agent<'a> {
     root: usize,
     /// time reserved for the end of turn (choice of the path + rebase), decaying max
     commit_ms: f64,
+    /// moves left before the forced game over
+    moves_left: u64,
     turn: usize,
     pub stats: TurnStats,
 }
@@ -158,6 +163,7 @@ impl<'a> Agent<'a> {
             width,
             root: 0,
             commit_ms: 1.0,
+            moves_left: 0,
             turn: 0,
             stats: TurnStats::default(),
         }
@@ -177,6 +183,21 @@ impl<'a> Agent<'a> {
             n4: 0,
         });
         self.root = 0;
+        self.moves_left = moves_until_forced_death(mass(b), seed);
+    }
+
+    /// Moves to play per turn to reach the forced game over within the turn limit.
+    fn pace(&self) -> usize {
+        let turns_left = MAX_TURNS.saturating_sub(self.turn + 3).max(1) as u64;
+        ((self.moves_left * 21 / 20).div_ceil(turns_left)).max(1) as usize
+    }
+
+    fn layers_target(&self) -> usize {
+        if self.params.layers_per_turn > 0 {
+            self.params.layers_per_turn
+        } else {
+            self.pace()
+        }
     }
 
     /// Expand the frontier by one layer. Returns the size of the new layer (0: beam is dead).
@@ -365,10 +386,11 @@ impl<'a> Agent<'a> {
         } else {
             self.params.time_ms
         };
+        let layers_target = self.layers_target();
         let target = if first {
-            self.params.horizon + self.params.layers_per_turn
+            self.params.horizon + layers_target
         } else {
-            self.params.layers_per_turn
+            layers_target
         };
 
         let mut expanded = 0;
@@ -409,7 +431,10 @@ impl<'a> Agent<'a> {
                     best = i;
                 }
             }
-            let play = ahead.saturating_sub(self.params.horizon).max(1).min(ahead);
+            let play = ahead
+                .saturating_sub(self.params.horizon)
+                .max(self.pace())
+                .min(ahead);
             (ahead, best, play)
         };
 
@@ -441,15 +466,16 @@ impl<'a> Agent<'a> {
         if !fixed && first && expanded > 0 {
             // calibrate the width from the cost of a layer during the first turn
             let ms_per_layer = start.elapsed().as_secs_f64() * 1000.0 / expanded as f64;
-            let wanted = self.params.time_ms / (self.params.layers_per_turn as f64 * ms_per_layer);
+            let wanted = self.params.time_ms / (layers_target as f64 * ms_per_layer);
             self.width = ((self.width as f64 * wanted.clamp(0.1, 10.0)) as usize)
                 .clamp(self.params.min_width, self.params.max_width);
         }
         if !fixed && !first && expanded > 0 {
-            let ratio = (expanded as f64 / self.params.layers_per_turn as f64).clamp(0.7, 1.3);
+            let ratio = (expanded as f64 / layers_target as f64).clamp(0.7, 1.3);
             self.width = ((self.width as f64 * ratio) as usize)
                 .clamp(self.params.min_width, self.params.max_width);
         }
+        self.moves_left = self.moves_left.saturating_sub(play as u64);
         self.turn += 1;
         out
     }
